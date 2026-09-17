@@ -1,0 +1,106 @@
+-- โหลด Library เมนู "เนยเอ๋อ"
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+-- สร้างหน้าต่างเมนู
+local Window = Fluent:CreateWindow({
+    Title = "เนยเอ๋อ Hub",
+    SubTitle = "by Delta User",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl -- ปุ่มซ่อน/เปิดเมนู (หรือกดปุ่มโลโก้ข้างจอ)
+})
+
+local Options = Fluent.Options
+local MainTab = Window:AddTab({ Title = "ฟังก์ชันหลัก", Icon = "user" })
+
+-- 1. วิ่งเร็ว (ปรับได้ 1 - 800 แบบเสถียร ไม่ขัดข้อง)
+local WalkSpeedValue = 16
+MainTab:AddSlider("WalkSpeedSlider", {
+    Title = "ปรับความเร็วการวิ่ง",
+    Description = "ปรับได้ตั้งแต่ 1 - 800",
+    Default = 16,
+    Min = 1,
+    Max = 800,
+    Rounding = 0,
+    Callback = function(Value)
+        WalkSpeedValue = Value
+    end
+})
+
+-- ลูปคุมความเร็วล็อกไว้ ไม่ให้ระบบเกมรีเซ็ตกลับ
+task.spawn(function()
+    while task.wait(0.1) do
+        pcall(function()
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.WalkSpeed = WalkSpeedValue
+            end
+        end)
+    end
+end)
+
+-- 2. กด E แบบไม่ต้องรอ (Instant ProximityPrompt)
+MainTab:AddToggle("InstantPrompt", {
+    Title = "กด E ทันที (ไม่ต้องรอหลอดเต็ม)",
+    Default = false,
+    Callback = function(Value)
+        _G.InstantE = Value
+    end
+})
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if _G.InstantE then
+            pcall(function()
+                for _, prompt in pairs(workspace:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        prompt.HoldDuration = 0
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- 3. กันกระเด็น & กันสตั้น (Anti-Knockback / Anti-Stun)
+MainTab:AddToggle("AntiKnockback", {
+    Title = "กันกระเด็น / กันสตั้น",
+    Default = false,
+    Callback = function(Value)
+        _G.AntiKB = Value
+    end
+})
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if _G.AntiKB then
+            pcall(function()
+                local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    -- ลบแรงส่ง (Velocity) เมื่ออยู่เฉยๆ หรือถูกตี
+                    if hrp.Velocity.Magnitude > 100 then
+                        hrp.Velocity = Vector3.new(0, 0, 0)
+                    end
+                    hrp.RotVelocity = Vector3.new(0, 0, 0)
+                end
+            end)
+        end
+    end
+end)
+
+-- 4. ระบบกันโดนบังคับออกจากแมพ (Anti-Kick จากฝั่ง Client)
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if tostring(method):lower() == "kick" then
+        return nil -- บล็อกคำสั่ง Kick ทันที
+    end
+    return oldNamecall(self, ...)
+end))
+
+Fluent:Notify({
+    Title = "เนยเอ๋อ Hub",
+    Content = "โหลดสคริปต์เรียบร้อยแล้ว!",
+    Duration = 5
+})
